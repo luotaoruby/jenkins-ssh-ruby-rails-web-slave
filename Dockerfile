@@ -13,7 +13,7 @@ RUN set -x \
       && gpgconf --kill all \
       && rm -rf "$GNUPGHOME" /usr/local/bin/gosu.asc \
       && chmod +x /usr/local/bin/gosu \
-      && gosu nobody true \
+      && gosu nobody true
       # && apt-get purge -y --auto-remove ca-certificates wget
 
 RUN mkdir /docker-entrypoint-initdb.d
