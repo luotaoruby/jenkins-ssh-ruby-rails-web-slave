@@ -2,4 +2,4 @@ command:
   mysql --version:
     exit-status: 0
     stdout:
-      - 5.7.27
+      - 5.7.28
