@@ -16,8 +16,6 @@ RUN set -x \
       && gosu nobody true
       # && apt-get purge -y --auto-remove ca-certificates wget
 
-RUN mkdir /docker-entrypoint-initdb.d
-
 RUN apt-get update && apt-get install -y --no-install-recommends \
         pwgen \
         openssl \
@@ -35,7 +33,7 @@ RUN set -ex; \
   apt-key list > /dev/null
 
 ENV MYSQL_MAJOR 5.7
-ENV MYSQL_VERSION 5.7.27-1debian9
+ENV MYSQL_VERSION 5.7.28-1debian9
 
 RUN echo "deb http://repo.mysql.com/apt/debian/ stretch mysql-${MYSQL_MAJOR}" > /etc/apt/sources.list.d/mysql.list
 
@@ -46,13 +44,20 @@ RUN { \
     echo mysql-community-server mysql-community-server/remove-test-db select false; \
    } | debconf-set-selections \
   && apt-get update && apt-get install -y mysql-server="${MYSQL_VERSION}" && rm -rf /var/lib/apt/lists/* \
-  && rm -rf /var/lib/mysql && mkdir -p /var/lib/mysql /var/run/mysqld \
-  && chown -R mysql:mysql /var/lib/mysql /var/run/mysqld \
+  && rm -rf /var/lib/mysql && mkdir -p /var/lib/mysql \
+  && chown -R mysql:mysql /var/lib/mysql \
 # ensure that /var/run/mysqld (used for socket and lock files) is writable regardless of the UID our mysqld instance ends up having at runtime
-  && chmod 777 /var/run/mysqld \
+  # && chmod 777 /var/lib/mysql/mysqld \
 # comment out a few problematic configuration values
   && find /etc/mysql/ -name '*.cnf' -print0 \
-    | xargs -0 grep -lZE '^(bind-address|log)' \
-    | xargs -rt -0 sed -Ei 's/^(bind-address|log)/#&/' \
+    | xargs -0 grep -lZE '^(bind-address|log|pid-file|socket)' \
+    | xargs -rt -0 sed -Ei 's/^(bind-address|log|pid-file|socket)/#&/' \
 # don't reverse lookup hostnames, they are usually another container
-  && echo '[mysqld]\nskip-host-cache\nskip-name-resolve' > /etc/mysql/conf.d/docker.cnf
+  && echo '[mysqld]\nskip-host-cache\nskip-name-resolve' > /etc/mysql/conf.d/docker.cnf \
+  && echo 'pid-file=/var/lib/mysql/mysqld.pid\nsocket=/var/lib/mysql/mysqld.sock' >> /etc/mysql/mysql.conf.d/mysqld.cnf \
+  && echo 'socket=/var/lib/mysql/mysqld.sock' >> /etc/mysql/conf.d/mysql.cnf
+
+# RUN set -ex \
+#       && mysqld --user=mysql --initialize-insecure
+# RUN set -ex \
+#       && mysqld --user=mysql --skip-networking --socket=/var/lib/mysql/mysqld.sock
